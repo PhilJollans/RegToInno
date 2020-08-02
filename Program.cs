@@ -52,10 +52,10 @@ namespace RegToInno
         Regex reKey = new Regex ( @"^\s*\[(?<hive>[^\\]+)\\(?<key>[^\]]+)\]" ) ;
 
         // Regular expression to match a string value
-        Regex reStringValue = new Regex ( @"^\s*""(?<name>[^""]+)""\s*=\s*""(?<value>[^""]+)""" ) ;
+        Regex reStringValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*""(?<value>[^""]+)""" ) ;
 
         // Regular expression to match a DWORD value
-        Regex reDwordValue = new Regex ( @"^\s*""(?<name>[^""]+)""\s*=\s*dword:(?<value>[0-9a-fA-F]+)" ) ;
+        Regex reDwordValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*dword:(?<value>[0-9a-fA-F]+)" ) ;
 
         string CurrentHive = null ;
         string CurrentKey  = null ;
@@ -90,9 +90,17 @@ namespace RegToInno
               if ( matString.Success )
               {
                 var name  = matString.Groups["name"].Value ;
+                var at    = matString.Groups["at"].Value ;
                 var value = matString.Groups["value"].Value ;
 
-                sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: string; ValueName: {name}; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                if ( at == "@" )
+                {
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: string; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
+                else
+                {
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: string; ValueName: {name}; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
                 continue ;
               }
 
@@ -104,10 +112,19 @@ namespace RegToInno
               if ( matDword.Success )
               {
                 var name  = matDword.Groups["name"].Value ;
+                var at    = matString.Groups["at"].Value ;
                 var value = matDword.Groups["value"].Value ;
 
-                // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
-                sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: dword; ValueName: {name}; ValueData: ${value}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                if ( at == "@" )
+                {
+                  // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: dword; ValueData: ${value}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
+                else
+                {
+                  // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: dword; ValueName: {name}; ValueData: ${value}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
                 continue ;
               }
 
