@@ -29,6 +29,12 @@ namespace RegToInno
       }
     }
 
+    static string InnoEscape ( string input )
+    {
+      string output = input.Replace ( "{", "{{" ) ;
+      return output ;
+    }
+
     static void Main( string[] args )
     {
       // There must be exactly one parameter
@@ -95,11 +101,11 @@ namespace RegToInno
 
                 if ( at == "@" )
                 {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: string; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: string; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
                 }
                 else
                 {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: string; ValueName: {name}; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: string; ValueName: {InnoEscape(name)}; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
                 }
                 continue ;
               }
@@ -118,12 +124,12 @@ namespace RegToInno
                 if ( at == "@" )
                 {
                   // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: dword; ValueData: ${value}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: dword; ValueData: ${InnoEscape(value)}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
                 }
                 else
                 {
                   // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{CurrentKey}\"; ValueType: dword; ValueName: {name}; ValueData: ${value}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: dword; ValueName: {InnoEscape(name)}; ValueData: ${InnoEscape(value)}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
                 }
                 continue ;
               }
