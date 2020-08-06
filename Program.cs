@@ -63,6 +63,9 @@ namespace RegToInno
         // Regular expression to match a DWORD value
         Regex reDwordValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*dword:(?<value>[0-9a-fA-F]+)" ) ;
 
+        // Regular expression to match a REG_EXPAND_SZ value
+        Regex reExpandSzValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex\(2\):(?<value>[0-9a-fA-F, ]+)" ) ;
+
         string CurrentHive = null ;
         string CurrentKey  = null ;
 
@@ -76,6 +79,22 @@ namespace RegToInno
             string line ;
             while ( ( line = sr.ReadLine() ) != null )
             {
+              // Check for continuation lines
+              // For example:
+              //
+              //@=hex(2):25,00,73,00,79,00,73,00,74,00,65,00,6d,00,72,00,6f,00,6f,00,74,00,25,\
+              //  00,5c,00,73,00,79,00,73,00,74,00,65,00,6d,00,33,00,32,00,5c,00,61,00,74,00,\
+              //  6c,00,2e,00,64,00,6c,00,6c,00,00,00
+              //
+              while ( line.EndsWith(@"\") )
+              {
+                var nextLine = sr.ReadLine() ;
+                if ( nextLine == null )
+                  break ;
+                else
+                  line = line.TrimEnd('\\') + nextLine.TrimStart() ;
+              }
+
               //
               // Check for a registry key
               //
@@ -118,7 +137,7 @@ namespace RegToInno
               if ( matDword.Success )
               {
                 var name  = matDword.Groups["name"].Value ;
-                var at    = matString.Groups["at"].Value ;
+                var at    = matDword.Groups["at"].Value ;
                 var value = matDword.Groups["value"].Value ;
 
                 if ( at == "@" )
@@ -130,6 +149,36 @@ namespace RegToInno
                 {
                   // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
                   sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: dword; ValueName: {InnoEscape(name)}; ValueData: ${InnoEscape(value)}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
+                continue ;
+              }
+
+              //
+              // Check for a REG_EXPAND_SZ value
+              //
+              var matExpandSz = reExpandSzValue.Match ( line ) ;
+
+              if ( matExpandSz.Success )
+              {
+                var name  = matExpandSz.Groups["name"].Value ;
+                var at    = matExpandSz.Groups["at"].Value ;
+                var value = matExpandSz.Groups["value"].Value ;
+
+                // Remove any spaces from the value
+                value = Regex.Replace(value, @"\s", "");
+
+                // Split the value into strings and convert to a byte array
+                var bytes       = value.Split(',').Select( x => Convert.ToByte(x,16) ).ToArray() ;
+                // Convert the byte array to a string. Remove any null terminator although it is probably harmless.
+                var valueString = Encoding.Unicode.GetString(bytes).TrimEnd('\0') ;
+
+                if ( at == "@" )
+                {
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: expandsz; ValueData: \"{InnoEscape(valueString)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
+                else
+                {
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: expandsz; ValueName: {InnoEscape(valueString)}; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
                 }
                 continue ;
               }
