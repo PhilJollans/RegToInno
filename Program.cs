@@ -66,6 +66,9 @@ namespace RegToInno
         // Regular expression to match a REG_EXPAND_SZ value
         Regex reExpandSzValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex\(2\):(?<value>[0-9a-fA-F, ]+)" ) ;
 
+        // Regular expression to match a REG_BINARY value
+        Regex reBinaryValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex:(?<value>[0-9a-fA-F, ]+)" ) ;
+
         string CurrentHive = null ;
         string CurrentKey  = null ;
 
@@ -178,7 +181,35 @@ namespace RegToInno
                 }
                 else
                 {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: expandsz; ValueName: {InnoEscape(valueString)}; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: expandsz; ValueName: {InnoEscape(name)}; ValueData: \"{InnoEscape(valueString)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
+                continue ;
+              }
+
+              //
+              // Check for a REG_Binary value
+              //
+              var matBinary = reBinaryValue.Match ( line ) ;
+
+              if ( matBinary.Success )
+              {
+                var name  = matBinary.Groups["name"].Value ;
+                var at    = matBinary.Groups["at"].Value ;
+                var value = matBinary.Groups["value"].Value ;
+
+                // Remove any spaces from the value
+                value = Regex.Replace(value, @"\s", "");
+
+                // Replace commas with spaces
+                value = value.Replace(","," ") ;
+
+                if ( at == "@" )
+                {
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: binary; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
+                }
+                else
+                {
+                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: binary; ValueName: {InnoEscape(name)}; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
                 }
                 continue ;
               }
