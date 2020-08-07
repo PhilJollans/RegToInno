@@ -71,6 +71,9 @@ namespace RegToInno
 
         string CurrentHive = null ;
         string CurrentKey  = null ;
+        string name        = null ;
+        string at          = null ;
+        string value       = null ;
 
         using ( var sr = new StreamReader ( args[0] ) )
         {
@@ -117,18 +120,11 @@ namespace RegToInno
 
               if ( matString.Success )
               {
-                var name  = matString.Groups["name"].Value ;
-                var at    = matString.Groups["at"].Value ;
-                var value = matString.Groups["value"].Value ;
+                name  = matString.Groups["name"].Value ;
+                at    = matString.Groups["at"].Value ;
+                value = matString.Groups["value"].Value ;
 
-                if ( at == "@" )
-                {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: string; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
-                else
-                {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: string; ValueName: {InnoEscape(name)}; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: string; ValueData: \"{InnoEscape(value)}\";" ) ;
                 continue ;
               }
 
@@ -139,20 +135,11 @@ namespace RegToInno
 
               if ( matDword.Success )
               {
-                var name  = matDword.Groups["name"].Value ;
-                var at    = matDword.Groups["at"].Value ;
-                var value = matDword.Groups["value"].Value ;
+                name  = matDword.Groups["name"].Value ;
+                at    = matDword.Groups["at"].Value ;
+                value = matDword.Groups["value"].Value ;
 
-                if ( at == "@" )
-                {
-                  // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: dword; ValueData: ${InnoEscape(value)}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
-                else
-                {
-                  // INNO SETUP uses the pascal convention of prefixing a hexadecimal value with $
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: dword; ValueName: {InnoEscape(name)}; ValueData: ${InnoEscape(value)}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: dword; ValueData: ${InnoEscape(value)};" ) ;
                 continue ;
               }
 
@@ -163,9 +150,9 @@ namespace RegToInno
 
               if ( matExpandSz.Success )
               {
-                var name  = matExpandSz.Groups["name"].Value ;
-                var at    = matExpandSz.Groups["at"].Value ;
-                var value = matExpandSz.Groups["value"].Value ;
+                name  = matExpandSz.Groups["name"].Value ;
+                at    = matExpandSz.Groups["at"].Value ;
+                value = matExpandSz.Groups["value"].Value ;
 
                 // Remove any spaces from the value
                 value = Regex.Replace(value, @"\s", "");
@@ -175,14 +162,7 @@ namespace RegToInno
                 // Convert the byte array to a string. Remove any null terminator although it is probably harmless.
                 var valueString = Encoding.Unicode.GetString(bytes).TrimEnd('\0') ;
 
-                if ( at == "@" )
-                {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: expandsz; ValueData: \"{InnoEscape(valueString)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
-                else
-                {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: expandsz; ValueName: {InnoEscape(name)}; ValueData: \"{InnoEscape(valueString)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: expandsz; ValueData: \"{InnoEscape(valueString)}\";" ) ;
                 continue ;
               }
 
@@ -193,9 +173,9 @@ namespace RegToInno
 
               if ( matBinary.Success )
               {
-                var name  = matBinary.Groups["name"].Value ;
-                var at    = matBinary.Groups["at"].Value ;
-                var value = matBinary.Groups["value"].Value ;
+                name  = matBinary.Groups["name"].Value ;
+                at    = matBinary.Groups["at"].Value ;
+                value = matBinary.Groups["value"].Value ;
 
                 // Remove any spaces from the value
                 value = Regex.Replace(value, @"\s", "");
@@ -203,14 +183,7 @@ namespace RegToInno
                 // Replace commas with spaces
                 value = value.Replace(","," ") ;
 
-                if ( at == "@" )
-                {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: binary; ValueData: \"{value}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
-                else
-                {
-                  sw.WriteLine ( $"Root: {ShortHive(CurrentHive)}; Subkey: \"{InnoEscape(CurrentKey)}\"; ValueType: binary; ValueName: {InnoEscape(name)}; ValueData: \"{InnoEscape(value)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ) ;
-                }
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: binary; ValueData: \"{value}\"; " ) ;
                 continue ;
               }
 
@@ -218,6 +191,18 @@ namespace RegToInno
 
           }
         }
+      }
+    }
+
+    private static string CommonPart ( string hive, string key, string name, string at )
+    {
+      if ( at == "@" )
+      {
+        return $"Root: {ShortHive(hive)}; Subkey: \"{InnoEscape(key)}\"; Flags: uninsdeletevalue uninsdeletekeyifempty;" ;
+      }
+      else
+      {
+        return $"Root: {ShortHive(hive)}; Subkey: \"{InnoEscape(key)}\"; ValueName: {InnoEscape(name)}; Flags: uninsdeletevalue uninsdeletekeyifempty;" ;
       }
     }
   }
