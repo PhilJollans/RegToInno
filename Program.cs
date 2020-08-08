@@ -4,6 +4,9 @@
 // The format of a .reg file is described here:
 // https://support.microsoft.com/en-us/help/310516/how-to-add-modify-or-delete-registry-subkeys-and-values-by-using-a-reg
 //
+// This is also interesting
+// https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-value-types
+//
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -63,11 +66,22 @@ namespace RegToInno
         // Regular expression to match a DWORD value
         Regex reDwordValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*dword:(?<value>[0-9a-fA-F]+)" ) ;
 
-        // Regular expression to match a REG_EXPAND_SZ value
-        Regex reExpandSzValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex\(2\):(?<value>[0-9a-fA-F, ]+)" ) ;
+        // The regular expressions for REG_BINARY, REG_EXPAND_SZ, REG_QWORD and REG_MULTI_SZ
+        // are almost exactly the same. Obviosuly we could restructure the program to use
+        // a single regular expression, but actually I'm fairly happy treating each type
+        // separately.
 
         // Regular expression to match a REG_BINARY value
         Regex reBinaryValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex:(?<value>[0-9a-fA-F, ]+)" ) ;
+
+        // Regular expression to match a REG_EXPAND_SZ value
+        Regex reExpandSzValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex\(2\):(?<value>[0-9a-fA-F, ]+)" ) ;
+
+        // Regular expression to match a REG_QWORD value
+        Regex reQWordValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex\(b\):(?<value>[0-9a-fA-F, ]+)" ) ;
+
+        // Regular expression to match a REG_MULTI_SZ value
+        Regex reMultiSzValue = new Regex ( @"^\s*(""(?<name>[^""]+)""|(?<at>@))\s*=\s*hex\(7\):(?<value>[0-9a-fA-F, ]+)" ) ;
 
         string CurrentHive = null ;
         string CurrentKey  = null ;
@@ -139,7 +153,7 @@ namespace RegToInno
                 at    = matDword.Groups["at"].Value ;
                 value = matDword.Groups["value"].Value ;
 
-                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: dword; ValueData: ${InnoEscape(value)};" ) ;
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: dword; ValueData: ${value};" ) ;
                 continue ;
               }
 
@@ -187,8 +201,58 @@ namespace RegToInno
                 continue ;
               }
 
-            }
+              //
+              // Check for a REG_QWORD value
+              //
+              var matQWord = reQWordValue.Match ( line ) ;
 
+              if ( matQWord.Success )
+              {
+                name  = matQWord.Groups["name"].Value ;
+                at    = matQWord.Groups["at"].Value ;
+                value = matQWord.Groups["value"].Value ;
+
+                // Remove any spaces from the value
+                value = Regex.Replace(value, @"\s", "");
+
+                // Split the value into strings and convert to a byte array
+                var bytes       = value.Split(',').Select( x => Convert.ToByte(x,16) ).ToArray() ;
+                // Convert the byte array to a QWORD
+                var qword = BitConverter.ToUInt64 ( bytes, 0 ) ;
+
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: qword; ValueData: \"{qword}\";" ) ;
+                continue ;
+              }
+
+              //
+              // Check for a REG_MULTI_SZ value
+              //
+              var matMultiSz = reMultiSzValue.Match ( line ) ;
+
+              if ( matMultiSz.Success )
+              {
+                name  = matMultiSz.Groups["name"].Value ;
+                at    = matMultiSz.Groups["at"].Value ;
+                value = matMultiSz.Groups["value"].Value ;
+
+                // Remove any spaces from the value
+                value = Regex.Replace(value, @"\s", "");
+
+                // Split the value into strings and convert to a byte array
+                var bytes       = value.Split(',').Select( x => Convert.ToByte(x,16) ).ToArray() ;
+                // Convert the byte array to a string. Remove any null terminator although it is probably harmless.
+                var valueString = Encoding.Unicode.GetString(bytes).TrimEnd('\0') ;
+
+                // Escape any curly brackets in the strings ...
+                valueString = InnoEscape ( valueString ) ;
+                // ... BEFORE replacing embedded nulls with the Inno Setup syntax {break}
+                valueString = valueString.Replace ( "\0", "{break}" ) ;
+
+                sw.WriteLine ( $"{CommonPart(CurrentHive,CurrentKey,name,at)} ValueType: multisz; ValueData: \"{valueString}\";" ) ;
+                continue ;
+              }
+
+            }
           }
         }
       }
