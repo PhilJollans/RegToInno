@@ -127,6 +127,13 @@ RegToInno <reg file> [-d <directory>] [-r <replacement>]
       if ( string.IsNullOrEmpty ( argReplacement ) )
         argReplacement = "{app}" ;
 
+      // Check that the input file exists
+      if ( !File.Exists ( argFile ) )
+      {
+        Console.WriteLine ( $"Input file does not exist: {argFile}" ) ;
+        Environment.Exit(1) ;
+      }
+
       // Todo
       // support removing keys
       // [-key]
