@@ -127,9 +127,6 @@ RegToInno <reg file> [-d <directory>] [-r <replacement>]
       if ( string.IsNullOrEmpty ( argReplacement ) )
         argReplacement = "{app}" ;
 
-
-
-
       // Todo
       // support removing keys
       // [-key]
@@ -167,9 +164,9 @@ RegToInno <reg file> [-d <directory>] [-r <replacement>]
       string at          = null ;
       string value       = null ;
 
-      using ( var sr = new StreamReader ( args[0] ) )
+      using ( var sr = new StreamReader ( argFile ) )
       {
-        using ( var sw = new StreamWriter ( args[0] + ".iss" ) )
+        using ( var sw = new StreamWriter ( argFile + ".iss" ) )
         {
           // Write section name to INNO SETUP file
           sw.WriteLine ( $"[Registry]" ) ;
