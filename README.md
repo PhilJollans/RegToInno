@@ -80,4 +80,111 @@ RegToInno c:\MyProject\MyComVisible.dll.reg
 
 ## Using the Inno Setup Preprocessor
 
-Coming soon
+There are two strategies for using RegSpy and RegToInno to generate a setup:
+
+* Run RegSpy (or RegAsm) and RegToInno as part of your build process 
+  and include the resulting .iss files in your installation script.
+
+* RegSpy (or RegAsm) and RegToInno via the Inno Setup Preprocessor.
+
+To run the tools via the Inno Setup Preprocesor you can use 
+[user defined functions](https://jrsoftware.org/ispphelp/index.php?topic=macros)
+based on the following examples.
+
+---
+**NOTE**
+
+I am certainly not an expert on the Inno Setup Proprocessor, and I am certain
+that the following User Defined Functions can be improved.
+
+Please let me know if you can simplify them, or improve them in any way.
+
+---
+
+### User defined function to install a COM component
+
+In the following example, the function **RegisterCom** runs the tools 
+RegSpy and RegToInno and includes the resulting .iss file into the 
+installation.
+
+The function **IncludeAndRegisterCom** does the same as **RegisterCom**, 
+but in addition it defines a [Files] section and includes the COM component
+in the installation.
+
+In this example, the directory **`{app}\components`** is used as the
+directory on target system. You will have to change this to specify the
+right directory for your installation.
+
+| :memo: NOTE   |
+|:---------------------------|
+| In this example, the directory **`{app}\components`** is used as the directory on target system. You will have to change this to specify the right directory for your installation.   |
+
+```
+#define RegInnoFile
+#sub IncludeRegInnoFile
+  #include RegInnoFile
+#endsub
+
+#define ComFile
+#sub IncludeComFile
+[Files]
+Source: {#ComFile}; DestDir: {app}\components; Flags: ignoreversion
+#endsub
+
+#define RegisterCom(str source)        \
+  Exec("RegSpy.exe",source,,,SW_HIDE), \
+  Exec("RegToInno.exe",source+".reg -r {app}\components",,,SW_HIDE), \
+  RegInnoFile = source+".reg.iss",     \
+  IncludeRegInnoFile
+
+#define IncludeAndRegisterCom(str source)        \
+  Exec("RegSpy.exe",source,,,SW_HIDE),           \
+  Exec("RegToInno.exe",source+".reg -r {app}\components",,,SW_HIDE), \
+  RegInnoFile = source+".reg.iss",    \
+  IncludeRegInnoFile,                 \
+  ComFile = source,                   \
+  IncludeComFile
+
+```
+
+To use these functions, you must use the 
+[#expr](https://jrsoftware.org/ispphelp/index.php?topic=expr) 
+directive, for example
+
+```
+#expr IncludeAndRegisterCom("FirstComponent.dll")
+#expr IncludeAndRegisterCom("SecondComponent.dll")
+#expr IncludeAndRegisterCom("ThirdComponent.dll")
+```
+
+IncludeRegInnoFile and IncludeComFile are helper functions to insert text
+into the installation script. There is probably a better way to achieve this.
+
+### User defined function to install a COM-Visible .NET component
+
+```
+#define RegInnoFile
+#sub IncludeRegInnoFile
+  #include RegInnoFile
+#endsub
+
+#define InteropFile
+#sub IncludeInteropFile
+[Files]
+Source: {#InteropFile}; DestDir: {app}\bin\interop; Flags: ignoreversion
+#endsub
+
+#define RegisterInterop(str source)   \
+  Exec("c:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe",source+" /codebase /regfile:"+source+".reg",,,SW_HIDE),  \
+  Exec("RegToInno.exe",source+".reg -r {app}\bin\interop",,,SW_HIDE), \
+  RegInnoFile = source+".reg.iss",    \
+  IncludeRegInnoFile
+
+#define IncludeAndRegisterInterop(str source)   \
+  Exec("c:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe",source+" /codebase /regfile:"+source+".reg",,,SW_HIDE),  \
+  Exec("RegToInno.exe",source+".reg -r {app}\bin\interop",,,SW_HIDE), \
+  RegInnoFile = source+".reg.iss",    \
+  IncludeRegInnoFile,                 \
+  InteropFile = source,               \
+  IncludeInteropFile
+```
