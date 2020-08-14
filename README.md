@@ -91,15 +91,9 @@ To run the tools via the Inno Setup Preprocesor you can use
 [user defined functions](https://jrsoftware.org/ispphelp/index.php?topic=macros)
 based on the following examples.
 
----
-**NOTE**
-
-I am certainly not an expert on the Inno Setup Proprocessor, and I am certain
-that the following User Defined Functions can be improved.
-
-Please let me know if you can simplify them, or improve them in any way.
-
----
+| :memo: NOTE   |
+|:---------------------------|
+| I am not an expert on the Inno Setup Proprocessor.<br/>Please let me know if you can simplify or improve these functions. |
 
 ### User defined function to install a COM component
 
@@ -110,10 +104,6 @@ installation.
 The function **IncludeAndRegisterCom** does the same as **RegisterCom**, 
 but in addition it defines a [Files] section and includes the COM component
 in the installation.
-
-In this example, the directory **`{app}\components`** is used as the
-directory on target system. You will have to change this to specify the
-right directory for your installation.
 
 | :memo: NOTE   |
 |:---------------------------|
@@ -157,10 +147,22 @@ directive, for example
 #expr IncludeAndRegisterCom("ThirdComponent.dll")
 ```
 
-IncludeRegInnoFile and IncludeComFile are helper functions to insert text
+**IncludeRegInnoFile** and **IncludeComFile** are helper functions to insert text
 into the installation script. There is probably a better way to achieve this.
 
 ### User defined function to install a COM-Visible .NET component
+
+In the following example, the function **RegisterInterop** runs the tool
+RegAsm to create a registry file with the COM-Visible .NET component and 
+then runs RegToInno to convert the .reg file into INNO SETUP syntax.
+
+The function **IncludeAndRegisterInterop** does the same as **RegisterInterop**, 
+but in addition it defines a [Files] section and includes the .NET component
+in the installation.
+
+| :memo: NOTE   |
+|:---------------------------|
+| In this example, the directory **`{app}\interop`** is used as the directory on target system. You will have to change this to specify the right directory for your installation.   |
 
 ```
 #define RegInnoFile
@@ -171,20 +173,35 @@ into the installation script. There is probably a better way to achieve this.
 #define InteropFile
 #sub IncludeInteropFile
 [Files]
-Source: {#InteropFile}; DestDir: {app}\bin\interop; Flags: ignoreversion
+Source: {#InteropFile}; DestDir: {app}\interop; Flags: ignoreversion
 #endsub
 
 #define RegisterInterop(str source)   \
   Exec("c:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe",source+" /codebase /regfile:"+source+".reg",,,SW_HIDE),  \
-  Exec("RegToInno.exe",source+".reg -r {app}\bin\interop",,,SW_HIDE), \
+  Exec("RegToInno.exe",source+".reg -r {app}\interop",,,SW_HIDE), \
   RegInnoFile = source+".reg.iss",    \
   IncludeRegInnoFile
 
 #define IncludeAndRegisterInterop(str source)   \
   Exec("c:\Windows\Microsoft.NET\Framework\v4.0.30319\RegAsm.exe",source+" /codebase /regfile:"+source+".reg",,,SW_HIDE),  \
-  Exec("RegToInno.exe",source+".reg -r {app}\bin\interop",,,SW_HIDE), \
+  Exec("RegToInno.exe",source+".reg -r {app}\interop",,,SW_HIDE), \
   RegInnoFile = source+".reg.iss",    \
   IncludeRegInnoFile,                 \
   InteropFile = source,               \
   IncludeInteropFile
 ```
+
+To use these functions, you must use the 
+[#expr](https://jrsoftware.org/ispphelp/index.php?topic=expr) 
+directive, for example
+
+```
+#expr IncludeAndRegisterInterop("FirstComVisibleComponent.dll")
+#expr IncludeAndRegisterInterop("SecondComVisibleComponent.dll")
+#expr IncludeAndRegisterInterop("ThirdComVisibleComponent.dll")
+```
+
+**IncludeRegInnoFile** and **IncludeInteropFile** are helper functions to insert text
+into the installation script. There is probably a better way to achieve this.
+
+#
