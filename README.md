@@ -204,4 +204,9 @@ directive, for example
 **IncludeRegInnoFile** and **IncludeInteropFile** are helper functions to insert text
 into the installation script. There is probably a better way to achieve this.
 
-#
+## Download
+
+You can download the 
+[executable file here](https://github.com/PhilJollans/RegToInno/raw/master/RegToInno.exe).
+
+
