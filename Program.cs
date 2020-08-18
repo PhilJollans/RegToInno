@@ -120,6 +120,9 @@ RegToInno <reg file> [-d <directory>] [-r <replacement>]
       if ( string.IsNullOrEmpty ( argFile ) )
         Usage() ;
 
+      // Get the full pathname before extracting the directory name below.
+      argFile = Path.GetFullPath ( argFile ) ;
+
       // Set defaults for the other parameters
       if ( string.IsNullOrEmpty ( argDirectory ) )
         argDirectory = Path.GetDirectoryName ( argFile ) ;
